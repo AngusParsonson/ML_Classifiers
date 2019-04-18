@@ -21,16 +21,48 @@ CLASS_3_C = r'#ffc34d'
 
 MODES = ['feature_sel', 'knn', 'alt', 'knn_3d', 'knn_pca']    
 
+# Accuracy calculations --------------------------------------------------------------------------------------------------
+
+def calculate_accuracy(gt_labels, pred_labels):
+    total_correct_predictions = sum(gt_labels == pred_labels)   
+    accuracy = (total_correct_predictions/len(gt_labels))*100
+    
+    return accuracy
+
+def calculate_confusion_matrix(gt_labels, pred_labels, num_classes):
+    # write your code here (remember to return the confusion matrix at the end!)   
+    matrix = np.zeros([num_classes, num_classes])
+    for i in range (num_classes):
+        for j in range (num_classes):
+            incorrectly_predicted = 0
+            number_of_i = 0
+            
+            for x in range (len(gt_labels)):
+                if (gt_labels[x] == i+1 and pred_labels[x] == j+1):
+                    incorrectly_predicted += 1
+                    number_of_i += 1
+                    
+                elif (gt_labels[x] == i+1):
+                    number_of_i += 1
+           
+            if (number_of_i != 0 ):  
+                matrix[i][j] = incorrectly_predicted/number_of_i
+            else:
+                matrix[i][j] = 0
+    
+    return matrix
+
 # Feature Selection ------------------------------------------------------------------------------------------------------
 
 def reduce_data(train_set, test_set, selected_features):
+    
     train_set_red = train_set[:, selected_features]
     test_set_red  = test_set[:, selected_features]
     
     return train_set_red, test_set_red
 
 def feature_selection(train_set, train_labels, **kwargs):
-
+    
     number_of_features = 2
     train_set_red, test_set_red = reduce_data(train_set, test_set, [10,12])
     
@@ -58,28 +90,51 @@ def feature_selection(train_set, train_labels, **kwargs):
     plt.show()
     
 # Knn -------------------------------------------------------------------------------------------------------------------
-    
-def calculate_centroids(train_set, train_labels):
-    classes = np.unique(train_labels)
-    centroids = np.array([np.mean(train_set[train_labels == c, :], axis=0) for c in classes])
-    
-    return centroids, classes
-
-def nearest_centroid(centroids, test_set):
-    dist = lambda x,y : np.sqrt(np.sum((x-y)**2))
-    centroid_dist = lambda x : [dist(x, centroid) for centroid in centroids]
-    predicted = np.argmin([centroid_dist(p) for p in test_set], axis = 1).astype(np.int) + 1
-    
-    return predicted
 
 def knn(train_set, train_labels, test_set, k, **kwargs):
-    centroids, classes = calculate_centroids(train_set_red, train_labels)
     
-    predicted = nearest_centroid(centroids, test_set_red)
-    np.savetxt('results.csv', predicted, delimiter=',', fmt='%d')
+    # Only uses the chosen two features to train and test the classifier
+    number_of_features = 2
+    train_set_red, test_set_red = reduce_data(train_set, test_set, [10,12])
+    
+    number_of_test_items  = len(test_set_red)
+    number_of_train_items = len(train_set_red)
+    
+    dist = lambda x,y : np.sqrt(np.sum((x-y)**2))
+    distances_to_points = np.zeros(shape=(number_of_test_items,number_of_train_items))
+    
+    for i in range (number_of_test_items):
+        for j in range (number_of_train_items):
+            distances_to_points[i][j] = dist(test_set_red[i], train_set_red[j])
+        
+    # Obtains an array of size test_set, with each item containing an array of the indices of the k closest training items
+    k_nearest_neighbours = np.zeros(shape=(number_of_test_items,k))
+    knn_classes = np.zeros(shape=(number_of_test_items,k), dtype=int)
+    
+    for i in range (number_of_test_items):
+        k_nearest_neighbours[i] = np.argsort(distances_to_points[i])[:k]
+        
+    ''' #Prints the distances of nearest points to test items
+    for i in range (number_of_test_items):
+        print( )
+        for j in range (k):
+            print(distances_to_points[i][k_nearest_neighbours[i][j].astype(np.int)])
+    '''
 
-    for i, pred in enumerate(predicted):
-        print('{:02d} gt class: {}\tpredicted class: {}'.format(i+1, pred, test_labels[i]))
+    for i in range (number_of_test_items):
+        for j in range (k):
+            knn_classes[i][j] = train_labels[k_nearest_neighbours[i][j].astype(np.int)]
+    
+    predictions = np.zeros(number_of_test_items, dtype=int)
+    
+    for i in range (number_of_test_items):
+        predictions[i] = np.bincount(knn_classes[i]).argmax()
+        
+    print(calculate_accuracy(test_labels, predictions))
+    matrix = calculate_confusion_matrix(test_labels, predictions, 3)
+    print(matrix)
+    
+    return predictions
 
 def alternative_classifier(train_set, train_labels, test_set, **kwargs):
     # write your code here and make sure you return the predictions at the end of 
@@ -126,8 +181,9 @@ if __name__ == '__main__':
         selected_features = feature_selection(train_set, train_labels)
         print_features(selected_features)
     elif mode == 'knn':
-        predictions = knn(train_set, train_labels, test_set, args.k)
-        print_predictions(predictions)
+        knn(train_set, train_labels, test_set, args.k)
+        #predictions = knn(train_set, train_labels, test_set, args.k)
+        #print_predictions(predictions)
     elif mode == 'alt':
         predictions = alternative_classifier(train_set, train_labels, test_set)
         print_predictions(predictions)
