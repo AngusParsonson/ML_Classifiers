@@ -176,10 +176,46 @@ def alternative_classifier(train_set, train_labels, test_set, **kwargs):
 
 
 def knn_three_features(train_set, train_labels, test_set, k, **kwargs):
-    # write your code here and make sure you return the predictions at the end of 
-    # the function
-    return []
+    
+    # Only uses the chosen two features to train and test the classifier
+    number_of_features = 3
+    train_set_red, test_set_red = reduce_data(train_set, test_set, [0,11,12])
+    
+    number_of_test_items  = len(test_set_red)
+    number_of_train_items = len(train_set_red)
+    
+    dist = lambda x,y : np.sqrt(np.sum((x-y)**2))
+    distances_to_points = np.zeros(shape=(number_of_test_items,number_of_train_items))
 
+    for i in range (number_of_test_items):
+        for j in range (number_of_train_items):
+            distances_to_points[i][j] = dist(test_set_red[i], train_set_red[j])
+        
+    k_nearest_neighbours = np.zeros(shape=(number_of_test_items,k)) # Distances of k nearest neighbours   
+    for i in range (number_of_test_items):
+        k_nearest_neighbours[i] = np.argsort(distances_to_points[i])[:k]
+        
+    ''' #Prints the distances of nearest points to test items
+    for i in range (number_of_test_items):
+        print( )
+        for j in range (k):
+            print(distances_to_points[i][k_nearest_neighbours[i][j].astype(np.int)])
+    '''
+    
+    knn_classes = np.zeros(shape=(number_of_test_items,k), dtype=int) # Classes of k nearest neighbours
+    for i in range (number_of_test_items):
+        for j in range (k):
+            knn_classes[i][j] = train_labels[k_nearest_neighbours[i][j].astype(np.int)]
+    
+    predictions = np.zeros(number_of_test_items, dtype=int) # Majority class of nearest neighbours is predicted
+    for i in range (number_of_test_items):
+        predictions[i] = np.bincount(knn_classes[i]).argmax()
+        
+    print(calculate_accuracy(test_labels, predictions))
+    matrix = calculate_confusion_matrix(test_labels, predictions, 3)
+    #print(matrix)
+    
+    return predictions
 
 def knn_pca(train_set, train_labels, test_set, k, n_components=2, **kwargs):
     # write your code here and make sure you return the predictions at the end of 
