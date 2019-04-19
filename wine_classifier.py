@@ -64,7 +64,7 @@ def reduce_data(train_set, test_set, selected_features):
 def feature_selection(train_set, train_labels, **kwargs):
     
     number_of_features = 2
-    train_set_red, test_set_red = reduce_data(train_set, test_set, [10,12])
+    train_set_red, test_set_red = reduce_data(train_set, test_set, [0,11])
     
     n_features = train_set.shape[1]
     fig, ax = plt.subplots(number_of_features, number_of_features)
@@ -95,14 +95,14 @@ def knn(train_set, train_labels, test_set, k, **kwargs):
     
     # Only uses the chosen two features to train and test the classifier
     number_of_features = 2
-    train_set_red, test_set_red = reduce_data(train_set, test_set, [10,12])
+    train_set_red, test_set_red = reduce_data(train_set, test_set, [0,11])
     
     number_of_test_items  = len(test_set_red)
     number_of_train_items = len(train_set_red)
     
     dist = lambda x,y : np.sqrt(np.sum((x-y)**2))
     distances_to_points = np.zeros(shape=(number_of_test_items,number_of_train_items))
-    
+
     for i in range (number_of_test_items):
         for j in range (number_of_train_items):
             distances_to_points[i][j] = dist(test_set_red[i], train_set_red[j])
@@ -120,7 +120,6 @@ def knn(train_set, train_labels, test_set, k, **kwargs):
         for j in range (k):
             print(distances_to_points[i][k_nearest_neighbours[i][j].astype(np.int)])
     '''
-
     for i in range (number_of_test_items):
         for j in range (k):
             knn_classes[i][j] = train_labels[k_nearest_neighbours[i][j].astype(np.int)]
@@ -132,14 +131,48 @@ def knn(train_set, train_labels, test_set, k, **kwargs):
         
     print(calculate_accuracy(test_labels, predictions))
     matrix = calculate_confusion_matrix(test_labels, predictions, 3)
-    print(matrix)
+    #print(matrix)
+    print(predictions)
     
     return predictions
 
+# Decision tree -----------------------------------------------------------------------------------------------------------
+# Tree datastructure copied from stack overflow and modified https://stackoverflow.com/questions/2598437/how-to-implement-a-binary-tree   
+        
 def alternative_classifier(train_set, train_labels, test_set, **kwargs):
-    # write your code here and make sure you return the predictions at the end of 
-    # the function
-    return []
+    
+    # Only uses the chosen two features to train and test the classifier
+    number_of_features = 2
+    train_set_red, test_set_red = reduce_data(train_set, test_set, [0,11])
+    
+    number_of_test_items  = len(test_set_red)
+    number_of_train_items = len(train_set_red)
+    
+    classes = [1,2,3]
+    means = np.array([np.mean(train_set_red[train_labels == c, :], axis=0) for c in classes])
+    standard_deviations = np.array([np.std(train_set_red[train_labels == c, :], axis=0) for c in classes])   
+    
+    class_likelihoods = np.bincount(train_labels - 1) / len(train_labels)
+     
+    predicted_class = np.zeros(shape=(number_of_test_items), dtype=int)
+    for i in range (number_of_test_items):
+        class_probabilities = np.zeros(shape=(3))
+        
+        for j in range (3):
+            x = 1 / np.sqrt(2 * np.pi * standard_deviations[j][0])
+            y = - ((test_set_red[i][0] - means[j][0])**2) / (2 * standard_deviations[j][0])
+            probability_first_attribute = x * np.exp(y)
+            
+            x = 1 / np.sqrt(2 * np.pi * standard_deviations[j][1])
+            y = - ((test_set_red[i][1] - means[j][1])**2) / (2 * standard_deviations[j][1])
+            probability_second_attribute = x * np.exp(y)
+            
+            class_probabilities[j] = (probability_first_attribute * probability_second_attribute) * class_likelihoods[j]
+        
+        predicted_class[i] = class_probabilities.argmax() + 1
+            
+    print(calculate_accuracy(test_labels, predicted_class))
+    return predicted_class
 
 
 def knn_three_features(train_set, train_labels, test_set, k, **kwargs):
