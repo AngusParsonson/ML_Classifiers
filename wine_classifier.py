@@ -13,6 +13,7 @@ import argparse
 import numpy as np
 import matplotlib.pyplot as plt
 from utilities import load_data, print_features, print_predictions
+from sklearn.decomposition import PCA
 
 # you may use these colours to produce the scatter plots
 CLASS_1_C = r'#3366ff'
@@ -132,7 +133,6 @@ def knn(train_set, train_labels, test_set, k, **kwargs):
     print(calculate_accuracy(test_labels, predictions))
     matrix = calculate_confusion_matrix(test_labels, predictions, 3)
     #print(matrix)
-    print(predictions)
     
     return predictions
 
@@ -218,9 +218,74 @@ def knn_three_features(train_set, train_labels, test_set, k, **kwargs):
     return predictions
 
 def knn_pca(train_set, train_labels, test_set, k, n_components=2, **kwargs):
-    # write your code here and make sure you return the predictions at the end of 
-    # the function
-    return []
+    
+    #n_components = 3
+    pca = PCA(n_components)
+    pca.fit(train_set)
+    
+    train_set_red = pca.transform(train_set)
+    test_set_red  = pca.transform(test_set)
+    
+    number_of_test_items  = len(test_set_red)
+    number_of_train_items = len(train_set_red)
+    
+    n_features = train_set.shape[1]
+    fig, ax = plt.subplots(n_components, n_components)
+    plt.subplots_adjust(left=0.01, right=0.99, top=0.99, bottom=0.01, wspace=0.2, hspace=0.4)
+
+    class_1_colour = r'#3366ff'
+    class_2_colour = r'#cc3300'
+    class_3_colour = r'#ffc34d'
+
+    class_colours = [class_1_colour, class_2_colour, class_3_colour]
+
+    # write your code here
+    colours = np.zeros_like(train_labels, dtype=np.object)
+    colours[train_labels == 1] = class_1_colour
+    colours[train_labels == 2] = class_2_colour
+    colours[train_labels == 3] = class_3_colour
+
+    for row in range(n_components):
+        for col in range(n_components):
+            ax[row][col].scatter(train_set_red[:, row], train_set_red[:, col], c=colours)
+            ax[row][col].set_title('Features {} vs {}'.format(row+1, col+1))
+    
+    dist = lambda x,y : np.sqrt(np.sum((x-y)**2))
+    distances_to_points = np.zeros(shape=(number_of_test_items,number_of_train_items))
+
+    for i in range (number_of_test_items):
+        for j in range (number_of_train_items):
+            distances_to_points[i][j] = dist(test_set_red[i], train_set_red[j])
+        
+    # Obtains an array of size test_set, with each item containing an array of the indices of the k closest training items
+    k_nearest_neighbours = np.zeros(shape=(number_of_test_items,k))
+    knn_classes = np.zeros(shape=(number_of_test_items,k), dtype=int)
+    
+    for i in range (number_of_test_items):
+        k_nearest_neighbours[i] = np.argsort(distances_to_points[i])[:k]
+        
+    ''' #Prints the distances of nearest points to test items
+    for i in range (number_of_test_items):
+        print( )
+        for j in range (k):
+            print(distances_to_points[i][k_nearest_neighbours[i][j].astype(np.int)])
+    '''
+    for i in range (number_of_test_items):
+        for j in range (k):
+            knn_classes[i][j] = train_labels[k_nearest_neighbours[i][j].astype(np.int)]
+    
+    predictions = np.zeros(number_of_test_items, dtype=int)
+    
+    for i in range (number_of_test_items):
+        predictions[i] = np.bincount(knn_classes[i]).argmax()
+        
+    print(calculate_accuracy(test_labels, predictions))
+    matrix = calculate_confusion_matrix(test_labels, predictions, 3)
+    #print(matrix)
+    
+    plt.show()
+    
+    return predictions
 
 
 def parse_args():
@@ -251,8 +316,8 @@ if __name__ == '__main__':
         print_features(selected_features)
     elif mode == 'knn':
         knn(train_set, train_labels, test_set, args.k)
-        #predictions = knn(train_set, train_labels, test_set, args.k)
-        #print_predictions(predictions)
+        predictions = knn(train_set, train_labels, test_set, args.k)
+        print_predictions(predictions)
     elif mode == 'alt':
         predictions = alternative_classifier(train_set, train_labels, test_set)
         print_predictions(predictions)
