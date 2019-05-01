@@ -141,7 +141,7 @@ def knn(train_set, train_labels, test_set, k, **kwargs):
     # Only uses the chosen two features to train and test the classifier
     number_of_features = 2
     feature_one = 1
-    feature_two = 2
+    feature_two = 12
     train_set_red, test_set_red = reduce_data(train_set, test_set, [feature_one-1,feature_two-1])
     
     number_of_test_items  = len(test_set_red)
