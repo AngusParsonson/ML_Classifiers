@@ -47,11 +47,24 @@ def calculate_confusion_matrix(gt_labels, pred_labels, num_classes):
                     number_of_i += 1
            
             if (number_of_i != 0 ):  
-                matrix[i][j] = incorrectly_predicted/number_of_i
+                matrix[i][j] = round(incorrectly_predicted/number_of_i, 2)
             else:
                 matrix[i][j] = 0
     
     return matrix
+
+def plot_matrix(matrix, ax=None):
+    
+    if ax is None:
+        ax = plt.gca()
+    cmap=plt.get_cmap('summer')
+    calcy = plt.imshow(matrix,cmap)
+    plt.xticks(range(3))
+    plt.yticks(range(3))
+    
+    for i in range (0,3):
+        for j in range (0,3):
+            plt.text(j, i, matrix[i][j])
 
 # Feature Selection ------------------------------------------------------------------------------------------------------
 
@@ -62,10 +75,41 @@ def reduce_data(train_set, test_set, selected_features):
     
     return train_set_red, test_set_red
 
+def print_scatter(train_set, test_labels):
+    number_of_features = 2
+    feature_one = 1
+    feature_two = 12
+    train_set_red, test_set_red = reduce_data(train_set, test_set, [feature_one-1,feature_two-1])
+    
+    n_features = train_set.shape[1]
+    fig, ax = plt.subplots(number_of_features, number_of_features)
+    plt.subplots_adjust(left=0.01, right=0.99, top=0.99, bottom=0.01, wspace=0.2, hspace=0.4)
+
+    class_1_colour = r'#3366ff'
+    class_2_colour = r'#cc3300'
+    class_3_colour = r'#ffc34d'
+
+    class_colours = [class_1_colour, class_2_colour, class_3_colour]
+
+    # write your code here
+    colours = np.zeros_like(test_labels, dtype=np.object)
+    colours[test_labels == 1] = class_1_colour
+    colours[test_labels == 2] = class_2_colour
+    colours[test_labels == 3] = class_3_colour
+
+    for row in range(number_of_features):
+        for col in range(number_of_features):
+            ax[row][col].scatter(test_set_red[:, row], test_set_red[:, col], c=colours)
+            ax[row][col].set_title('Features {} vs {}'.format(feature_one, feature_two))
+
+    plt.show()
+    
 def feature_selection(train_set, train_labels, **kwargs):
     
     number_of_features = 2
-    train_set_red, test_set_red = reduce_data(train_set, test_set, [0,11])
+    feature_one = 1
+    feature_two = 12
+    train_set_red, test_set_red = reduce_data(train_set, test_set, [feature_one-1,feature_two-1])
     
     n_features = train_set.shape[1]
     fig, ax = plt.subplots(number_of_features, number_of_features)
@@ -86,9 +130,9 @@ def feature_selection(train_set, train_labels, **kwargs):
     for row in range(number_of_features):
         for col in range(number_of_features):
             ax[row][col].scatter(train_set_red[:, row], train_set_red[:, col], c=colours)
-            ax[row][col].set_title('Features {} vs {}'.format(row+1, col+1))
+            ax[row][col].set_title('Features {} vs {}'.format(feature_one, feature_two))
 
-    plt.show()
+    return [0, 11]
     
 # Knn -------------------------------------------------------------------------------------------------------------------
 
@@ -96,7 +140,9 @@ def knn(train_set, train_labels, test_set, k, **kwargs):
     
     # Only uses the chosen two features to train and test the classifier
     number_of_features = 2
-    train_set_red, test_set_red = reduce_data(train_set, test_set, [0,11])
+    feature_one = 1
+    feature_two = 2
+    train_set_red, test_set_red = reduce_data(train_set, test_set, [feature_one-1,feature_two-1])
     
     number_of_test_items  = len(test_set_red)
     number_of_train_items = len(train_set_red)
@@ -129,10 +175,6 @@ def knn(train_set, train_labels, test_set, k, **kwargs):
     
     for i in range (number_of_test_items):
         predictions[i] = np.bincount(knn_classes[i]).argmax()
-        
-    print(calculate_accuracy(test_labels, predictions))
-    matrix = calculate_confusion_matrix(test_labels, predictions, 3)
-    #print(matrix)
     
     return predictions
 
@@ -171,7 +213,6 @@ def alternative_classifier(train_set, train_labels, test_set, **kwargs):
         
         predicted_class[i] = class_probabilities.argmax() + 1
             
-    print(calculate_accuracy(test_labels, predicted_class))
     return predicted_class
 
 
@@ -179,7 +220,7 @@ def knn_three_features(train_set, train_labels, test_set, k, **kwargs):
     
     # Only uses the chosen two features to train and test the classifier
     number_of_features = 3
-    train_set_red, test_set_red = reduce_data(train_set, test_set, [0,11,12])
+    train_set_red, test_set_red = reduce_data(train_set, test_set, [0,10,11])
     
     number_of_test_items  = len(test_set_red)
     number_of_train_items = len(train_set_red)
@@ -210,10 +251,6 @@ def knn_three_features(train_set, train_labels, test_set, k, **kwargs):
     predictions = np.zeros(number_of_test_items, dtype=int) # Majority class of nearest neighbours is predicted
     for i in range (number_of_test_items):
         predictions[i] = np.bincount(knn_classes[i]).argmax()
-        
-    print(calculate_accuracy(test_labels, predictions))
-    matrix = calculate_confusion_matrix(test_labels, predictions, 3)
-    #print(matrix)
     
     return predictions
 
@@ -278,12 +315,6 @@ def knn_pca(train_set, train_labels, test_set, k, n_components=2, **kwargs):
     
     for i in range (number_of_test_items):
         predictions[i] = np.bincount(knn_classes[i]).argmax()
-        
-    print(calculate_accuracy(test_labels, predictions))
-    matrix = calculate_confusion_matrix(test_labels, predictions, 3)
-    #print(matrix)
-    
-    plt.show()
     
     return predictions
 
